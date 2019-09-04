@@ -50,27 +50,44 @@ class Feed extends Component {
       page--;
       this.setState({ postPage: page });
     }
-    fetch(`http://localhost:4000/feed/posts?page=${page}`, {
+
+    const graphqlQuery = {
+      query: `
+        {
+          posts(page: ${page}) {
+            posts {
+              _id
+              title
+              content
+              creator {
+                name
+              }
+            }
+            totalPosts
+          }
+        }
+      `
+    }
+    fetch(`http://localhost:4000/graphql`, {
+      method: 'POST',
       headers: {
         Authorization: `Bearer ${this.props.token}`,
+        'Content-Type': 'application/json'
       },
+      body: JSON.stringify(graphqlQuery),
     })
-      .then(res => {
-        console.log(res)
-        if (res.status !== 200) {
-          throw new Error('Failed to fetch posts.');
-        }
-        return res.json();
-      })
+      .then(res => res.json())
       .then(resData => {
+        if (resData.errors) { throw new Error('Fetching posts failed!') }
+        const { posts, totalPosts } = resData.data.posts
         this.setState({
-          posts: resData.posts.map(post => {
+          posts: posts.map(post => {
             return {
               ...post,
               imagePath: post.imageUrl,
             };
           }),
-          totalPosts: resData.totalItems,
+          totalPosts: totalPosts,
           postsLoading: false
         });
       })
@@ -120,7 +137,7 @@ class Feed extends Component {
     formData.append('content', postData.content);
     formData.append('image', postData.image);
 
-    const { title, content, imageUrl } = postData;
+    const { title, content } = postData;
 
     let graphqlQuery = {
       query: `
@@ -161,23 +178,20 @@ class Feed extends Component {
         if (resData.errors) {
           throw new Error("User login failed!");
         }
-        const {
-          _id,
-          title,
-          content,
-          creator,
-          createdAt
-        } = resData.data.createPost;
-
-        const post = {
-          _id: _id,
-          title: title,
-          content: content,
-          creator: creator,
-          createdAt: createdAt
-        };
+        
         this.setState(prevState => {
+          let updatedPosts = [...prevState.posts];
+          if (prevState.editPost) {
+            const postIndex = prevState.posts.findIndex(
+              p => p._id === prevState.editPost._id
+            );
+            updatedPosts[postIndex] = postData;
+          } else {
+            updatedPosts.pop();
+            updatedPosts.unshift(postData);
+          }
           return {
+            posts: updatedPosts,
             isEditing: false,
             editPost: null,
             editLoading: false
