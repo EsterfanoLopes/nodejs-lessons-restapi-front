@@ -172,8 +172,8 @@ class Feed extends Component {
             query: `
               mutation {
                 updatePost(id: "${this.state.editPost._id}", postInput: {title: "${postData.title}", content: "${
-                postData.content
-                }", imageUrl: "${imageUrl}"}) {
+              postData.content
+              }", imageUrl: "${imageUrl}"}) {
                   _id
                   title
                   content
@@ -209,7 +209,7 @@ class Feed extends Component {
         if (resData.errors) {
           throw new Error('User login failed!');
         }
-        let resDataField = (this.state.editPost) ? 'createPost': 'updatePost';
+        let resDataField = (this.state.editPost) ? 'createPost' : 'updatePost';
         const post = {
           _id: resData.data[resDataField]._id,
           title: resData.data[resDataField].title,
@@ -226,7 +226,9 @@ class Feed extends Component {
             );
             updatedPosts[postIndex] = post;
           } else {
-            updatedPosts.pop();
+            if (prevState.posts.length >= 2) {
+              updatedPosts.pop();
+            }
             updatedPosts.unshift(post);
           }
           return {
